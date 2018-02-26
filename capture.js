@@ -7,6 +7,7 @@ let { join } = require("path")
 let glob = require("glob")
 let blessed = require("blessed")
 let contrib = require('blessed-contrib')
+let { inspect } = require("util")
 
 function getPorts() {
 	let files = glob.sync("/dev/tty.usbmodem*")
@@ -39,60 +40,12 @@ function begin(outfile, portFile) {
 	})
 }
 
-function loadStatus() {
-	const width = process.stdout.columns;
-	const height = process.stdout.rows;
-
-	let act = (st, ...elts) => {
-		let string = elts.reduce((a, _, i) => a + elts[i] + st[i+1], st[0]);
-		return () => process.stdout.write(string);
-	}
-
-	const reset = act`\x1B[0;0f`;
-	const save = act`\x1B[0s`;
-	const reload = act`\x1B[0u`;
-	const clear = n => act`\x1B[${width};${n}H\x1B[1J`;
-
-	reset();
-	save();
-	clear(20);
-	reload();
-
-	let displayStatus = () => {
-		save();
-		reset();
-		let screen = new Array((width + 1) * Math.floor(height / 2));
-		let lHeight = Math.floor(height/2);
-
-		let output = Array.from(screen, ((_, i) => {
-			let x = i % width + 1;
-			let y = Math.floor(i/width) + 1;
-
-			if (x === 1 && y === 1) return '\u250c';
-			if (x === width && y === 1) return '\u2510';
-			if (x === 1 && y === lHeight) return '\u2514';
-			if (x === width && y === lHeight) return '\u2518';
-			if (x === width || x === 1) return '\u2502'; 
-			if (y === 1 || y === lHeight) return '\u2500';
-
-			if (x === width + 1) return '\n';
-
-			return ' ';
-		}));
-		
-		process.stdout.write(output.join(""));
-		reload();
-	}
-
-	displayStatus();
-	return displayStatus;
-
-}
-
 class BlessedScreen {
-	constructor() {
+	constructor(state) {
+		this.state = state
+
 		let screen = blessed.screen({
-			smartCSR: true
+			smartCSR: true,
 		})
 
 		screen.title="SousTech"
@@ -156,10 +109,18 @@ class BlessedScreen {
 			data: [0, 0, 0, 0, 0],
 		})
 
+		let actionOpts = [
+			"start",
+			"stop",
+			"ping",
+			"analyze",
+			"exit",
+		]
+
 		let actions = blessed.list({
 			label: "Actions",
 			width: '50%',
-			height: '50%',
+			height: '25%',
 			tags: true,
 			border: {
 				type: 'line',
@@ -167,16 +128,94 @@ class BlessedScreen {
 			top: '50%',
 			left: '0%',
 			mouse: true,
-			items: [
-				'start',
-				'stop',
-				'exit',
-				'analyze',
-			]
+			keys: true,
+			style: {
+				item: {
+					fg: "blue",
+				},
+				selected: {
+					bg: "blue",
+					fg: "white"
+				}
+			},
+			items: actionOpts.map(d => " - " + d) 
 		})
 
+		actions.on("select", (d,b,c) => { 
+			switch(actionOpts[b]) {
+				case "start": {
+					state.port.write("D\n")
+					break
+				}
+				case "stop": {
+					state.port.write("C\n")
+					break
+				}
+				case "ping": {
+					state.port.write("P\n")
+					break
+				}
+				case "exit": {
+					process.exit(0)
+				}
+			}
+		})
+
+		actions.focus();
+
 		screen.append(actions);
-			
+
+		let settingOpts = [
+			["Show Graph", "graph", "boolean"],
+			["Show Data",  "data",  "boolean"]
+		]
+
+		state.settings.graph = true
+		state.settings.data  = false
+		let getOpts = () => 
+			settingOpts.map(([name, key, type, def]) => {
+				if (type === "boolean") {
+					return ` - ${name} [${state.settings[key] ? "X" : " "}]`
+				} else {
+					return ` - ${name}`
+				}
+			})
+
+		let settings = blessed.list({
+			label: "Settings",
+			width: '50%',
+			height: '25%',
+			tags: true,
+			border: {
+				type: 'line',
+			},
+			top: '75%',
+			left: '0%',
+			mouse: true,
+			keys: true,
+			style: {
+				item: {
+					fg: "blue",
+				},
+				selected: {
+					bg: "blue",
+					fg: "white"
+				}
+			},
+			items: getOpts()
+		})
+
+		settings.on("select", (d, v) => {
+			let [name, key, type] = settingOpts[v]
+			if (type === "boolean") {
+				state.settings[key] = !state.settings[key]
+			}
+
+			settings.setItems(getOpts())
+			screen.render()		
+		})
+
+		screen.append(settings)	
 	}
 
 	log(d) {
@@ -197,14 +236,23 @@ class BlessedScreen {
 	data (d) {
 		let data = d.split(", ").map((d) => parseInt(d));
 		let titles = ["CH4", "LPG", "H2", "Alcohol", "Solvent"];
-		this.barData.setData({ data, titles });
+		if (this.state.settings.graph) {
+			this.barData.setData({ data, titles });
+		}
+		if (this.state.settings.data) {
+			this.notifs.log(`  {#FF7043-fg}${d}{/}`);
+		}
 		this.screen.render();
 	}
 }
 
 function repl() {
-
-	let screen = new BlessedScreen();
+	
+	let state = {
+		readBuffer : new Buffer([]),
+		dataHandler: () => {},
+		settings: {}
+	}
 
 	let ports = getPorts();
 	let portFile;
@@ -217,25 +265,11 @@ function repl() {
 		portFile = prompter()
 	}
 
-	
-	let rec = (action, state) => {
-		if (action !== null) {
-			switch (action.value) {
-				case "cat":
-
-			}
-		}
-		let promise = mainPrompt()
-		return promise.then(rec)
-	}
+	let screen = new BlessedScreen(state);
 
 	return portFile.then(port => {
+		state.port = new serial("/dev/tty.usbmodem" + port)
 		screen.log(`Connected to ${port}`);
-		let state = {
-			port : new serial("/dev/tty.usbmodem" + port),
-			readBuffer : new Buffer([]),
-			dataHandler: () => {}
-		}
 
 		state.port.on('data', (b) => {
 			state.readBuffer = Buffer.concat([state.readBuffer, b]);
@@ -261,10 +295,7 @@ function repl() {
 
 		state.port.on("open", () => {
 			state.port.write('P\n');
-			state.port.write('D\n');
 		})
-
-		return rec(null, state)
 	})
 }
 
