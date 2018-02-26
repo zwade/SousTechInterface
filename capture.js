@@ -112,6 +112,7 @@ class BlessedScreen {
 		let actionOpts = [
 			"start",
 			"stop",
+			"record",
 			"ping",
 			"analyze",
 			"exit",
@@ -155,6 +156,28 @@ class BlessedScreen {
 					state.port.write("P\n")
 					break
 				}
+				case "record": {
+					let question = new blessed.Prompt({
+						width: "30%",
+						height: "30%",
+						top: "center",
+						left: "center",
+						border: "line",
+
+					})
+					screen.append(question)
+					question.input("Enter File Name", "", (err, name) => {
+						state.port.write("D\n")
+						fs.open(join(__dirname, "data", `${name}.csv`), "w+", (err, fd) => {
+							state.active.file = fd
+							state.active.duration = state.settings.duration
+							state.active.time = Date.now() 
+							fs.write(fd, "Time, CH4, LPG, H2, Alcohol, Solvent\n", () => 0)
+						})
+					})
+					screen.render()
+					break
+				}
 				case "exit": {
 					process.exit(0)
 				}
@@ -170,8 +193,6 @@ class BlessedScreen {
 			["Show Data",  "data",  "boolean"]
 		]
 
-		state.settings.graph = true
-		state.settings.data  = false
 		let getOpts = () => 
 			settingOpts.map(([name, key, type, def]) => {
 				if (type === "boolean") {
@@ -242,6 +263,14 @@ class BlessedScreen {
 		if (this.state.settings.data) {
 			this.notifs.log(`  {#FF7043-fg}${d}{/}`);
 		}
+		if (this.state.active.time > 0) {
+			let time = Date.now() - this.state.active.time
+			if (time / 1000 > this.state.active.duration) {
+				this.state.active = {time: 0}
+			} else {
+				fs.write(this.state.active.file, `${time}, ${d}\n`, () => 0)	
+			}
+		}
 		this.screen.render();
 	}
 }
@@ -251,7 +280,14 @@ function repl() {
 	let state = {
 		readBuffer : new Buffer([]),
 		dataHandler: () => {},
-		settings: {}
+		active: {
+			time: 0
+		},
+		settings: {
+			graph: true,
+			data: false,
+			duration: 300,
+		}
 	}
 
 	let ports = getPorts();
