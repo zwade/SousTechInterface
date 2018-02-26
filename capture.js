@@ -109,6 +109,23 @@ class BlessedScreen {
 			data: [0, 0, 0, 0, 0],
 		})
 
+		let dataList = blessed.FileManager({
+			label: "Collected Data",
+			width: "50%",
+			height: '50%',
+			top: "50%",
+			left: "50%",
+			mouse: true,
+			keys: true,
+			border: {
+				type: "line"
+			},
+			cwd: join(__dirname, "data")
+		})
+
+		screen.append(dataList)
+		dataList.refresh()
+
 		let actionOpts = [
 			"start",
 			"stop",
@@ -169,6 +186,7 @@ class BlessedScreen {
 					question.input("Enter File Name", "", (err, name) => {
 						state.port.write("D\n")
 						fs.open(join(__dirname, "data", `${name}.csv`), "w+", (err, fd) => {
+							dataList.refresh()
 							state.active.file = fd
 							state.active.duration = state.settings.duration
 							state.active.time = Date.now() 
@@ -190,13 +208,16 @@ class BlessedScreen {
 
 		let settingOpts = [
 			["Show Graph", "graph", "boolean"],
-			["Show Data",  "data",  "boolean"]
+			["Show Data",  "data",  "boolean"],
+			["Record Duration", "duration", "number"],
 		]
 
 		let getOpts = () => 
-			settingOpts.map(([name, key, type, def]) => {
+			settingOpts.map(([name, key, type]) => {
 				if (type === "boolean") {
 					return ` - ${name} [${state.settings[key] ? "X" : " "}]`
+				} else if (type === "number") {
+					return ` - ${name} (${state.settings[key]})`	
 				} else {
 					return ` - ${name}`
 				}
@@ -230,13 +251,29 @@ class BlessedScreen {
 			let [name, key, type] = settingOpts[v]
 			if (type === "boolean") {
 				state.settings[key] = !state.settings[key]
+				settings.setItems(getOpts())
+				screen.render()		
 			}
-
-			settings.setItems(getOpts())
-			screen.render()		
+			if (type === "number") {
+				let prompt = blessed.prompt({
+					width: "30%",
+					height: "30%",
+					left: "center",
+					top: "center",
+					border: "line",
+				})
+				screen.append(prompt)
+				prompt.input(`Update ${name}`, "" + state.settings[key], (err, data) => {
+					state.settings[key] = parseInt(data)
+					settings.setItems(getOpts())
+					screen.render()
+				})
+				screen.render()
+			}
 		})
 
 		screen.append(settings)	
+
 	}
 
 	log(d) {
