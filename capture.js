@@ -112,7 +112,7 @@ class BlessedScreen {
 		let dataList = blessed.FileManager({
 			label: "Collected Data",
 			width: "50%",
-			height: '50%',
+			height: '35%',
 			top: "50%",
 			left: "50%",
 			mouse: true,
@@ -188,7 +188,6 @@ class BlessedScreen {
 						fs.open(join(__dirname, "data", `${name}.csv`), "w+", (err, fd) => {
 							dataList.refresh()
 							state.active.file = fd
-							state.active.duration = state.settings.duration
 							state.active.time = Date.now() 
 							fs.write(fd, "Time, CH4, LPG, H2, Alcohol, Solvent\n", () => 0)
 						})
@@ -274,6 +273,43 @@ class BlessedScreen {
 
 		screen.append(settings)	
 
+		let timer = contrib.lcd({
+			segmentWidth: 0.09,
+			segmentInterval: 0.03,
+			strokeWidth: 0.01,
+			elements: 5,
+			display: "00-00",
+			color: "green",
+			border: "line",
+			width: "50%",
+			height: "15%",
+			top: "85%",
+		 	left: "50%",
+			label: "Time Remaining"
+		})
+
+		screen.append(timer)
+
+		setInterval(() => {
+			if (!state.active || state.active.time <= 0) {
+				timer.setDisplay("00-00")
+				return
+			}
+
+			let leftPad = (s) => {
+				s = "" + s
+				if (s.length == 1) return "0" + s
+				return s
+			}
+
+			let remaining = state.settings.duration - (Date.now() - state.active.time)/1000
+			let minutes = Math.floor(remaining/60)
+			let seconds = Math.floor(remaining % 60);
+
+			timer.setDisplay(`${leftPad(minutes)}-${leftPad(seconds)}`) 
+		}, 500)
+
+
 	}
 
 	log(d) {
@@ -302,7 +338,7 @@ class BlessedScreen {
 		}
 		if (this.state.active.time > 0) {
 			let time = Date.now() - this.state.active.time
-			if (time / 1000 > this.state.active.duration) {
+			if (time / 1000 > this.state.settings.duration) {
 				this.state.active = {time: 0}
 			} else {
 				fs.write(this.state.active.file, `${time}, ${d}\n`, () => 0)	
@@ -373,15 +409,3 @@ function repl() {
 }
 
 repl();
-
-/*
-yargs.usage("capture <cmd> [args]")
-	.command("run [file]", "Start listening for data", (yargs) => {
-		yargs.positional("file", {
-			type: "string",
-			default: "data.csv",
-			describe: "the location for data storage"
-		})
-	}, (argv) => begin(argv.file, argv.port))
-	.argv
-*/
