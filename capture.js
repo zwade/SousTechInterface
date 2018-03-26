@@ -310,6 +310,60 @@ class BlessedScreen {
 		}, 500)
 
 
+		let realTime = contrib.line({
+			style: {
+				line: "yellow",
+				text: "green", 
+				baseline: "white",
+			},
+			width: "100%",
+			height: "100%",
+			showLegend: true,
+			label: "Active Monitoring",
+		})
+
+		this.lines = [{
+			title: 'CH4',
+			x: [],
+			y: [],
+			style: {
+				line: 'red'
+			}
+		}, {
+			title: 'LPG',
+			x: [],
+			y: [],
+			style: {
+				line: 'red'
+			}
+		}, {
+			title: 'H2',
+			x: [],
+			y: [],
+			style: {
+				line: 'red'
+			}
+		}, {
+			title: 'Alcohol',
+			x: [],
+			y: [],
+			style: {
+				line: 'red'
+			}
+		}, {
+			title: 'Solvent',
+			x: [],
+			y: [],
+			style: {
+				line: 'red'
+			}
+		}]
+
+		screen.append(realTime);
+		realTime.setData(this.lines);
+		this.realTime = realTime;
+
+		screen.key(['space'], () => this.realTime.toggle());
 	}
 
 	log(d) {
@@ -330,6 +384,12 @@ class BlessedScreen {
 	data (d) {
 		let data = d.split(", ").map((d) => parseInt(d));
 		let titles = ["CH4", "LPG", "H2", "Alcohol", "Solvent"];
+		let now = new Date();
+		let time = `${a.getMinutes()}:${a.getSeconds()}`;
+		for (let i = 0; i < 5; i++) {
+			this.lines[i].x.append(time);
+			this.lines[i].y.append(data[i]);
+		}
 		if (this.state.settings.graph) {
 			this.barData.setData({ data, titles });
 		}
