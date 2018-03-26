@@ -2,12 +2,22 @@
 
 let yargs = require("yargs")
 let serial = require("serialport")
-let fs = require("fs")
+let _fs = require("fs")
 let { join } = require("path")
 let glob = require("glob")
 let blessed = require("blessed")
 let contrib = require('blessed-contrib')
-let { inspect } = require("util")
+let { inspect, promisify } = require("util")
+let Mic = require("node-microphone")
+
+let fs = {
+	open: promisify(_fs.open),
+	write: promisify(_fs.write),
+	createWriteStream: _fs.createWriteStream,
+}
+
+
+mic = new Mic();
 
 function getPorts() {
 	let files = glob.sync("/dev/tty.usbmodem*")
@@ -73,7 +83,8 @@ class BlessedScreen {
 
 
 		// Quit on Escape, q, or Control-C.
-		screen.key(['escape', 'q', 'C-c'], function(ch, key) {
+		screen.key(['escape', 'q', 'C-c'], (ch, key) => {
+			if (this.state.active && this.state.active.recording) this.state.active.recording.stopRecording();
 			return process.exit(0);
 		});
 
@@ -185,17 +196,26 @@ class BlessedScreen {
 					screen.append(question)
 					question.input("Enter File Name", "", (err, name) => {
 						state.port.write("D\n")
-						fs.open(join(__dirname, "data", `${name}.csv`), "w+", (err, fd) => {
-							dataList.refresh()
-							state.active.file = fd
-							state.active.time = Date.now() 
-							fs.write(fd, "Time, CH4, LPG, H2, Alcohol, Solvent\n", () => 0)
-						})
+						fs.open(join(__dirname, "data", `${name}.csv`), "w+")
+							.then(fd => {
+								dataList.refresh()
+								state.active.file = fd
+								state.active.time = Date.now() 
+								fs.write(fd, "Time, CH4, LPG, H2, Alcohol, Solvent\n", () => 0)
+							}).then(() => {
+								let audio = fs.createWriteStream(join(__dirname, "recordings", `${name}.wav`), {mode: 0o644});
+								state.active.recording = mic
+								mic.startRecording().pipe(audio);
+
+								mic.on('info', (d) => state.screen.log(d));
+								mic.on('error', (d) => state.screen.error(d));
+							})
 					})
 					screen.render()
 					break
 				}
 				case "exit": {
+					if (state.active && state.active.recording) state.active.recording.stopRecording();
 					process.exit(0)
 				}
 			}
@@ -327,14 +347,14 @@ class BlessedScreen {
 			x: [],
 			y: [],
 			style: {
-				line: 'red'
+				line: 'green'
 			}
 		}, {
 			title: 'LPG',
 			x: [],
 			y: [],
 			style: {
-				line: 'red'
+				line: 'yellow'
 			}
 		}, {
 			title: 'H2',
@@ -348,14 +368,14 @@ class BlessedScreen {
 			x: [],
 			y: [],
 			style: {
-				line: 'red'
+				line: 'white'
 			}
 		}, {
 			title: 'Solvent',
 			x: [],
 			y: [],
 			style: {
-				line: 'red'
+				line: 'blue'
 			}
 		}]
 
@@ -363,7 +383,11 @@ class BlessedScreen {
 		realTime.setData(this.lines);
 		this.realTime = realTime;
 
-		screen.key(['space'], () => this.realTime.toggle());
+		this.realTime.hide();
+		screen.key(['space', ' '], (ch, key) => {
+			this.log(ch);
+			this.realTime.toggle()
+		});
 	}
 
 	log(d) {
@@ -385,11 +409,16 @@ class BlessedScreen {
 		let data = d.split(", ").map((d) => parseInt(d));
 		let titles = ["CH4", "LPG", "H2", "Alcohol", "Solvent"];
 		let now = new Date();
-		let time = `${a.getMinutes()}:${a.getSeconds()}`;
+		let time = `${now.getMinutes()}:${now.getSeconds()}`;
 		for (let i = 0; i < 5; i++) {
-			this.lines[i].x.append(time);
-			this.lines[i].y.append(data[i]);
+			this.lines[i].x.push(time);
+			this.lines[i].y.push(data[i]);
+			if (this.lines[i].x.length >= 64) {
+				this.lines[i].x.shift();
+				this.lines[i].y.shift();
+			}
 		}
+		this.realTime.setData(this.lines);
 		if (this.state.settings.graph) {
 			this.barData.setData({ data, titles });
 		}
@@ -399,6 +428,7 @@ class BlessedScreen {
 		if (this.state.active.time > 0) {
 			let time = Date.now() - this.state.active.time
 			if (time / 1000 > this.state.settings.duration) {
+				this.state.active.recording.stopRecording();
 				this.state.active = {time: 0}
 			} else {
 				fs.write(this.state.active.file, `${time}, ${d}\n`, () => 0)	
@@ -435,6 +465,7 @@ function repl() {
 	}
 
 	let screen = new BlessedScreen(state);
+	state.screen = screen;
 
 	return portFile.then(port => {
 		state.port = new serial("/dev/tty.usbmodem" + port)
