@@ -116,8 +116,8 @@ class BlessedScreen {
 		screen.append(barData);
 
 		barData.setData({
-			titles: ["CH4", "LPG", "H2", "Alcohol", "Solvent"],
-			data: [0, 0, 0, 0, 0],
+			titles: ["CH4", "LPG", "H2", "Alcohol", "Solvent", "Object", "Ambient"],
+			data: [0, 0, 0, 0, 0, 0, 0],
 		})
 
 		let dataList = blessed.FileManager({
@@ -201,7 +201,7 @@ class BlessedScreen {
 								dataList.refresh()
 								state.active.file = fd
 								state.active.time = Date.now() 
-								fs.write(fd, "Time, CH4, LPG, H2, Alcohol, Solvent\n", () => 0)
+								fs.write(fd, "Time, CH4, LPG, H2, Alcohol, Solvent, Object Temperature, Ambient Temperature\n", () => 0)
 							}).then(() => {
 								let audio = fs.createWriteStream(join(__dirname, "recordings", `${name}.wav`), {mode: 0o644});
 								state.active.recording = mic
@@ -377,6 +377,20 @@ class BlessedScreen {
 			style: {
 				line: 'blue'
 			}
+		}, {
+			title: 'Object',
+			x: [],
+			y: [],
+			style: {
+				line: 'orange'
+			}
+		}, {
+			title: 'Ambient',
+			x: [],
+			y: [],
+			style: {
+				line: 'orange'
+			}
 		}]
 
 		screen.append(realTime);
@@ -407,10 +421,10 @@ class BlessedScreen {
 
 	data (d) {
 		let data = d.split(", ").map((d) => parseInt(d));
-		let titles = ["CH4", "LPG", "H2", "Alcohol", "Solvent"];
+		let titles = ["CH4", "LPG", "H2", "Alcohol", "Solvent", "Object", "Ambient"];
 		let now = new Date();
 		let time = `${now.getMinutes()}:${now.getSeconds()}`;
-		for (let i = 0; i < 5; i++) {
+		for (let i = 0; i < 7; i++) {
 			this.lines[i].x.push(time);
 			this.lines[i].y.push(data[i]);
 			if (this.lines[i].x.length >= 64) {
