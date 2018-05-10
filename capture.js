@@ -402,6 +402,23 @@ class BlessedScreen {
 			this.log(ch);
 			this.realTime.toggle()
 		});
+
+		let liveClassification = blessed.text({
+			width: "20%",
+			height: "6%",
+			left: "78%",
+			top: "2%",
+			showLegend: true,
+			label: "Classification",
+			border: {
+				type: "line",
+			}
+
+		})
+
+		screen.append(liveClassification);
+		liveClassification.setText("");
+		this.live = liveClassification;
 	}
 
 	log(d) {
@@ -422,8 +439,10 @@ class BlessedScreen {
 	data (d) {
 		let data = d.split(", ").map((d) => parseInt(d));
 		let titles = ["CH4", "LPG", "H2", "Alcohol", "Solvent", "Object", "Ambient"];
+		let classes = ["ch4", "lpg", "h2", "alcohol", "solvent", "objecttemp", "ambienttemp"];
 		let now = new Date();
 		let time = `${now.getMinutes()}:${now.getSeconds()}`;
+
 		for (let i = 0; i < 7; i++) {
 			this.lines[i].x.push(time);
 			this.lines[i].y.push(data[i]);
@@ -433,12 +452,22 @@ class BlessedScreen {
 			}
 		}
 		this.realTime.setData(this.lines);
+
+		let args = {};
+		for (let i = 0; i < titles.length; i++) {
+			args[classes[i]] = data[i];
+		}
+		let classRes = this.state.evaluator(args)
+		this.live.setText(classRes);
+
 		if (this.state.settings.graph) {
 			this.barData.setData({ data, titles });
 		}
+
 		if (this.state.settings.data) {
 			this.notifs.log(`  {#FF7043-fg}${d}{/}`);
 		}
+
 		if (this.state.active.time > 0) {
 			let time = Date.now() - this.state.active.time
 			if (time / 1000 > this.state.settings.duration) {
@@ -448,13 +477,16 @@ class BlessedScreen {
 				fs.write(this.state.active.file, `${time}, ${d}\n`, () => 0)	
 			}
 		}
+
 		this.screen.render();
 	}
 }
 
-function repl() {
+async function repl() {
+	let evaluator = await require("./wekaParse")();
 	
 	let state = {
+		evaluator: evaluator,
 		readBuffer : new Buffer([]),
 		dataHandler: () => {},
 		active: {

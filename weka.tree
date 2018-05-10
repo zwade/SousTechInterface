@@ -1,0 +1,88 @@
+h2 < 64
+|   solvent < 102.5
+|   |   lpg < 56.5
+|   |   |   objecttemp < 105.01
+|   |   |   |   lpg < 52.5
+|   |   |   |   |   solvent < 51
+|   |   |   |   |   |   alcohol < 178.5
+|   |   |   |   |   |   |   h2 < 46 : boiling_water (34/0)
+|   |   |   |   |   |   |   h2 >= 46 : bell_pepper (1/0)
+|   |   |   |   |   |   alcohol >= 178.5
+|   |   |   |   |   |   |   ch4 < 44.5 : bell_pepper (403/0)
+|   |   |   |   |   |   |   ch4 >= 44.5 : boiling_water (9/0)
+|   |   |   |   |   solvent >= 51 : boiling_water (156/0)
+|   |   |   |   lpg >= 52.5
+|   |   |   |   |   h2 < 46.5 : boiling_water (461/0)
+|   |   |   |   |   h2 >= 46.5
+|   |   |   |   |   |   alcohol < 182 : bell_pepper (7/0)
+|   |   |   |   |   |   alcohol >= 182 : boiling_water (305/0)
+|   |   |   objecttemp >= 105.01 : bell_pepper (3823/0)
+|   |   lpg >= 56.5
+|   |   |   objecttemp < 119.57
+|   |   |   |   lpg < 57.5
+|   |   |   |   |   solvent < 58
+|   |   |   |   |   |   alcohol < 182.5 : boiling_water (14/0)
+|   |   |   |   |   |   alcohol >= 182.5
+|   |   |   |   |   |   |   alcohol < 190
+|   |   |   |   |   |   |   |   h2 < 46 : boiling_water (3/0)
+|   |   |   |   |   |   |   |   h2 >= 46 : bell_pepper (3/0)
+|   |   |   |   |   |   |   alcohol >= 190 : boiling_water (7/0)
+|   |   |   |   |   solvent >= 58 : boiling_water (150/0)
+|   |   |   |   lpg >= 57.5 : boiling_water (3875/0)
+|   |   |   objecttemp >= 119.57 : bell_pepper (59/0)
+|   solvent >= 102.5 : tomato_sauce (3119/0)
+h2 >= 64
+|   lpg < 56.5
+|   |   alcohol < 261.5
+|   |   |   solvent < 147 : potato (54/0)
+|   |   |   solvent >= 147
+|   |   |   |   objecttemp < 145.81 : serrano (28/0)
+|   |   |   |   objecttemp >= 145.81 : potato (2/0)
+|   |   alcohol >= 261.5 : potato (2927/0)
+|   lpg >= 56.5
+|   |   objecttemp < 116.62
+|   |   |   ch4 < 52.5
+|   |   |   |   ch4 < 49.5
+|   |   |   |   |   lpg < 59 : potato (9/0)
+|   |   |   |   |   lpg >= 59 : serrano (4/0)
+|   |   |   |   ch4 >= 49.5
+|   |   |   |   |   solvent < 110
+|   |   |   |   |   |   solvent < 83.5 : serrano (53/0)
+|   |   |   |   |   |   solvent >= 83.5
+|   |   |   |   |   |   |   h2 < 73 : boiling_water (3/0)
+|   |   |   |   |   |   |   h2 >= 73 : potato (1/0)
+|   |   |   |   |   solvent >= 110 : serrano (571/0)
+|   |   |   ch4 >= 52.5
+|   |   |   |   objecttemp < 107.72 : boiling_water (988/0)
+|   |   |   |   objecttemp >= 107.72
+|   |   |   |   |   ch4 < 53.5
+|   |   |   |   |   |   h2 < 71.5 : boiling_water (11/0)
+|   |   |   |   |   |   h2 >= 71.5
+|   |   |   |   |   |   |   h2 < 73.5
+|   |   |   |   |   |   |   |   solvent < 110 : boiling_water (1/0)
+|   |   |   |   |   |   |   |   solvent >= 110 : serrano (10/0)
+|   |   |   |   |   |   |   h2 >= 73.5 : serrano (50/0)
+|   |   |   |   |   ch4 >= 53.5 : boiling_water (664/0)
+|   |   objecttemp >= 116.62
+|   |   |   alcohol < 252.5
+|   |   |   |   lpg < 57.5
+|   |   |   |   |   h2 < 76 : serrano (78/0)
+|   |   |   |   |   h2 >= 76 : potato (1/0)
+|   |   |   |   lpg >= 57.5 : serrano (2113/0)
+|   |   |   alcohol >= 252.5
+|   |   |   |   h2 < 75.5
+|   |   |   |   |   alcohol < 258.5
+|   |   |   |   |   |   objecttemp < 130.82 : potato (116/0)
+|   |   |   |   |   |   objecttemp >= 130.82 : serrano (158/0)
+|   |   |   |   |   alcohol >= 258.5
+|   |   |   |   |   |   solvent < 108.5 : potato (11/0)
+|   |   |   |   |   |   solvent >= 108.5 : serrano (856/0)
+|   |   |   |   h2 >= 75.5
+|   |   |   |   |   solvent < 148
+|   |   |   |   |   |   solvent < 115
+|   |   |   |   |   |   |   h2 < 85.5 : potato (533/0)
+|   |   |   |   |   |   |   h2 >= 85.5 : boiling_water (4/0)
+|   |   |   |   |   |   solvent >= 115
+|   |   |   |   |   |   |   h2 < 77.5 : serrano (21/0)
+|   |   |   |   |   |   |   h2 >= 77.5 : potato (202/0)
+|   |   |   |   |   solvent >= 148 : serrano (152/0)
